@@ -20,9 +20,9 @@ Message::Message(unsigned int ID, unsigned int DataLength)
 Message::Message(const byte* ByteArray, unsigned long Address)
 {
   // Parse out ID, priority, and data length.
-  Message::mID = Message::Deserialize<unsigned int>(ByteArray, Address);
-  Message::mPriority = Message::Deserialize<byte>(ByteArray, Address + 2);
-  Message::mDataLength = Message::Deserialize<unsigned int>(ByteArray, Address + 3);
+  Message::mID = SC::Deserialize<unsigned int>(ByteArray, Address);
+  Message::mPriority = SC::Deserialize<byte>(ByteArray, Address + 2);
+  Message::mDataLength = SC::Deserialize<unsigned int>(ByteArray, Address + 3);
   // Copy data bytes.
   Message::mData = new byte[Message::mDataLength];
   for(unsigned int i = 0; i < Message::mDataLength; i++)
@@ -39,9 +39,9 @@ Message::~Message()
 void Message::Serialize(byte* ByteArray, unsigned long Address) const
 {
   // Serialize the message into the byte array.
-  Message::Serialize<unsigned int>(ByteArray, Address, Message::mID);
-  Message::Serialize<byte>(ByteArray, Address + 2, Message::mPriority);
-  Message::Serialize<unsigned int>(ByteArray, Address + 3, Message::mDataLength);
+  SC::Serialize<unsigned int>(ByteArray, Address, Message::mID);
+  SC::Serialize<byte>(ByteArray, Address + 2, Message::mPriority);
+  SC::Serialize<unsigned int>(ByteArray, Address + 3, Message::mDataLength);
   for(unsigned int i = 0; i < Message::mDataLength; i++)
   {
     ByteArray[Address + 5 + i] = Message::mData[i];

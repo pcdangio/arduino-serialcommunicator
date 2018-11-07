@@ -5,6 +5,8 @@
 
 #include "Arduino.h"
 
+#include "utility/Serialization.h"
+
 namespace SC {
 
 /// \brief Represents a single message of data that can be communicated.
@@ -43,7 +45,7 @@ public:
       return false;
     }
 
-    Message::Serialize<T>(Message::mData, Address, Data);
+    SC::Serialize<T>(Message::mData, Address, Data);
 
     // Return success.
     return true;
@@ -54,7 +56,7 @@ public:
   template <typename T>
   T GetData(unsigned int Address) const
   {
-    return Message::Deserialize<T>(Message::mData, Address);
+    return SC::Deserialize<T>(Message::mData, Address);
   }
   /// \brief Serializes the message into a supplied byte array for transmission.
   /// \param ByteArray The array to serialize the message into.
@@ -92,31 +94,6 @@ private:
   unsigned int mDataLength;
   /// \brief Stores the message's data bytes.
   byte* mData;
-
-  /// \brief Serializes any data type into a specified array.
-  /// \param Array The array to serialize the data into.
-  /// \param Address The array index to start writing the serialized data to.
-  /// \param Data The data to serialize into the array.
-  template <typename T>
-  static void Serialize(byte* Array, unsigned long Address, T Data)
-  {
-    // Recast the data into a byte array.
-    const byte* Bytes = reinterpret_cast<const byte*>(&Data);
-    // Copy the bytes into the data array.
-    for(unsigned int i = 0; i < sizeof(Data); i++)
-    {
-      Array[Address + i] = Bytes[i];
-    }
-  }
-  /// \brief Deserializes any data type from a specified array.
-  /// \param Array The array to deserialize the data from.
-  /// \param Address The array index to start reading the serialized data from.
-  /// \return The deserialized data.
-  template <typename T>
-  static T Deserialize(const byte* Array, unsigned long Address)
-  {
-    return *(reinterpret_cast<const T*>(&Array[Address]));
-  }
 };
 
 }

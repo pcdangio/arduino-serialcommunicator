@@ -18,7 +18,8 @@ HEADERS += \
     src/Message.h \
     src/utility/Outbound.h \
     src/utility/Inbound.h \
-    src/utility/MessageStatus.h
+    src/utility/MessageStatus.h \
+    src/utility/Serialization.h
 
 RESOURCES +=
 
