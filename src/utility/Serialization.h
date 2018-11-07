@@ -33,15 +33,15 @@ template <typename T>
 T Deserialize(const byte* Array, unsigned long Address)
 {
     T Output;
-    byte* Bytes = new byte[sizeof(Output)];
+    // Get the byte array pointer to the output variable.
+    byte* Bytes = reinterpret_cast<byte*>(&Output);
+    // Copy the bytes from the array into the output pointer.
     // Arduino is little endian.  Convert to big endian.
     unsigned int j = Address;
     for(unsigned int i = sizeof(Output); i > 0; i--)
     {
         Bytes[i-1] = Array[j++];
     }
-    Output = *(reinterpret_cast<const T*>(Bytes));
-    delete [] Bytes;
 
     return Output;
 }
