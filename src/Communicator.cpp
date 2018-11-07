@@ -1,5 +1,7 @@
 #include "Communicator.h"
 
+#include "utility/Serialization.h"
+
 using namespace SC;
 
 // CONSTRUCTORS
@@ -257,26 +259,68 @@ void Communicator::SpinRX()
 
 void Communicator::TX(Outbound* Message)
 {
-    // Determine the total length of the message in bytes.
-    unsigned long OriginalLength = Message->pMessage()->pMessageLength();
     // Grab the original serialized bytes of the message.
-    byte* OriginalBytes = new byte[OriginalLength];
-    Message->pMessage()->Serialize(OriginalBytes);
-    // Scan through the message to see if any escape bytes are needed.
+    unsigned long MSGLength = Message->pMessage()->pMessageLength();
+    byte* MSGBytes = new byte[MSGLength];
+    Message->pMessage()->Serialize(MSGBytes);
 
-
-
-  // Send the message.
-    byte* Array = new byte[Message->pMessage()->pMessageLength()];
-    Message->pMessage()->Serialize(Array, 0);
-    for(unsigned long i = 0; i < Message->pMessage()->pMessageLength(); i++)
+    // Scan through the message to see how many escape bytes are needed.
+    unsigned long Escapes = 0;
+    for(unsigned long i = 0; i < MSGLength; i++)
     {
-      Serial.print(Array[i], HEX);
+        if(MSGBytes[i] == Communicator::cEscapeByte || MSGBytes[i] == Communicator::cHeaderByte)
+        {
+            Escapes++;
+        }
+    }
+
+    // Create packet byte array.
+    // Add in escape bytes, plus the 7 other bytes of the packet (1 Header, 4 Sequence, 2 CRC)
+    unsigned long PKTLength = Message->pMessage()->pMessageLength() + Escapes + 7;
+    byte* PKTBytes = new byte[PKTLength];
+
+    // Write the front part of the packet.
+    PKTBytes[0] = Communicator::cHeaderByte;
+    SC::Serialize<unsigned long>(PKTBytes, 1, Message->pSequenceNumber());
+
+    // Write the message bytes into the packet.
+    // Use a j iterator to keep track of the write position in the EscapedBytes array.
+    unsigned long j = 5;
+    // Iterate over the unescaped bytes.
+    for(unsigned long i = 0; i < MSGLength; i++)
+    {
+        // Check if the current byte needs to be escaped.
+        if(MSGBytes[i] == Communicator::cEscapeByte || MSGBytes[i] == Communicator::cHeaderByte)
+        {
+            // Escape byte necessary.
+            PKTBytes[j++] = Communicator::cEscapeByte;
+            // Subtract one from the original byte.
+            PKTBytes[j++] = MSGBytes[i] - 1;
+        }
+        else
+        {
+            // No escape byte needed, copy directly into escaped bytes and increment write position.
+           PKTBytes[j++] = MSGBytes[i];
+        }
+    }
+
+    // Calculate the CRC.
+    PKTBytes[j++] = 0xCC;
+    PKTBytes[j++] = 0xDD;
+
+    // Send the message.
+    for(unsigned long i = 0; i < PKTLength; i++)
+    {
+      Serial.print(PKTBytes[i], HEX);
     }
     Serial.println();
 
     // Call the Sent method on the outbound message to update timestamps and counters.
     Message->Sent();
+
+    // Delete the packet and message bytes.
+    delete [] MSGBytes;
+    delete [] PKTBytes;
 }
 
 // PROPERTIES
