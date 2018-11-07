@@ -5,7 +5,7 @@
 
 #include "Message.h"
 /// \file Communicator.h
-/// \brief Defines the Communicator class.
+/// \brief Defines the SC::Communicator class.
 #include "utility/MessageStatus.h"
 #include "utility/Inbound.h"
 #include "utility/Outbound.h"
