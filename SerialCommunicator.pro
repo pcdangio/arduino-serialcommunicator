@@ -23,4 +23,5 @@ HEADERS += \
 RESOURCES +=
 
 DISTFILES += \
-    library.properties
+    library.properties \
+    keywords.txt
