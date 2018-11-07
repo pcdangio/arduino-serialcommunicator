@@ -48,19 +48,12 @@ public:
     unsigned int MessagesAvailable();
     ///
     /// \brief Receive Receives the next message from the RX queue.
+    /// \param ID OPTIONAL The ID of the next message to receive.  Defaults to 0xFFFF, which will receive any ID.
     /// \return A pointer to the received message.  Will return NULL if no messages are available.
     /// \note The calling code shall become responsible for the Message pointer and must clean up the Message's resources.
     /// \details Messages are ordered by highest priority, followed by earliest received.
     ///
-    const Message* Receive();
-    ///
-    /// \brief Receive Receives the next message from the RX queue that has a matching message ID.
-    /// \param ID The ID of the next message to receive.
-    /// \return A pointer to the received message.  Will return NULL if no messages are available.
-    /// \note The calling code shall become responsible for the Message pointer and must clean up the Message's resources.
-    /// \details Messages are ordered by highest priority, followed by earliest received.
-    ///
-    const Message* Receive(unsigned int ID);
+    const Message* Receive(unsigned int ID = 0xFFFF);
     ///
     /// \brief Spin Performs the Communicator's regular duties.
     /// \note This should be called regularly in the main loop of your code.
@@ -134,6 +127,16 @@ public:
     void pMaxRetries(unsigned int Retries);
 
 private:
+    // CONSTANTS
+    ///
+    /// \brief cHeaderByte Stores the header byte flag.
+    ///
+    const byte cHeaderByte = 0xAA;
+    ///
+    /// \brief cEscapeByte Stores the escape byte flag.
+    ///
+    const byte cEscapeByte = 0x1B;
+
     // ATTRIBUTES
     ///
     /// \brief mQSize Stores the size of the TX/RX queues in messages.
