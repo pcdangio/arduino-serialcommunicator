@@ -33,12 +33,27 @@ public:
   /// \param Data The data to write to the supplied address.
   /// \return TRUE if the write was successful, FALSE if an overrun occured.
   template <typename T>
-  bool SetData(unsigned int Address, T Data);
+  bool SetData(unsigned int Address, T Data)
+  {
+    // First check we are operating within the data array bounds.
+    if(Address + sizeof(Data) - 1 >= Message::mDataLength)
+    {
+      return false;
+    }
+
+    Message::Serialize<T>(Message::mData, Address, Data);
+
+    // Return success.
+    return true;
+  }
   /// \brief POLYMORPHIC Gets a data field from the message.
   /// \param Address The address of the data field in the message.
   /// \return The data from the requested address.
   template <typename T>
-  T GetData(unsigned int Address) const;
+  T GetData(unsigned int Address) const
+  {
+    return Message::Deserialize<T>(Message::mData, Address);
+  }
   /// \brief Serializes the message into a supplied byte array for transmission.
   /// \param ByteArray The array to serialize the message into.
   /// \param Address OPTIONAL The address in the array to begin writing to.
@@ -81,13 +96,25 @@ private:
   /// \param Address The array index to start writing the serialized data to.
   /// \param Data The data to serialize into the array.
   template <typename T>
-  static void Serialize(byte* Array, unsigned long Address, T Data);
+  static void Serialize(byte* Array, unsigned long Address, T Data)
+  {
+    // Recast the data into a byte array.
+    const byte* Bytes = reinterpret_cast<const byte*>(&Data);
+    // Copy the bytes into the data array.
+    for(unsigned int i = 0; i < sizeof(Data); i++)
+    {
+      Array[Address + i] = Bytes[i];
+    }
+  }
   /// \brief Deserializes any data type from a specified array.
   /// \param Array The array to deserialize the data from.
   /// \param Address The array index to start reading the serialized data from.
   /// \return The deserialized data.
   template <typename T>
-  static T Deserialize(const byte* Array, unsigned long Address);
+  static T Deserialize(const byte* Array, unsigned long Address)
+  {
+    return *(reinterpret_cast<const T*>(&Array[Address]));
+  }
 };
 
 }

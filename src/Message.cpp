@@ -36,25 +36,6 @@ Message::~Message()
 }
 
 // METHODS
-template <typename T>
-bool Message::SetData(unsigned int Address, T Data)
-{
-  // First check we are operating within the data array bounds.
-  if(Address + sizeof(Data) - 1 >= Message::mDataLength)
-  {
-    return false;
-  }
-
-  Message::Serialize<T>(Message::mData, Address, Data);
-
-  // Return success.
-  return true;
-}
-template <typename T>
-T Message::GetData(unsigned int Address) const
-{
-  return Message::Deserialize<T>(Message::mData, Address);
-}
 void Message::Serialize(byte* ByteArray, unsigned long Address) const
 {
   // Serialize the message into the byte array.
@@ -65,23 +46,6 @@ void Message::Serialize(byte* ByteArray, unsigned long Address) const
   {
     ByteArray[Address + 5 + i] = Message::mData[i];
   }
-}
-
-template <typename T>
-void Message::Serialize(byte* Array, unsigned long Address, T Data)
-{
-  // Recast the data into a byte array.
-  const byte* Bytes = reinterpret_cast<const byte*>(&Data);
-  // Copy the bytes into the data array.
-  for(unsigned int i = 0; i < sizeof(Data); i++)
-  {
-    Array[Address + i] = Bytes[i];
-  }
-}
-template <typename T>
-T Message::Deserialize(const byte* Array, unsigned long Address)
-{
-  return *(reinterpret_cast<const T*>(&Array[Address]));
 }
 
 // PROPERTIES
