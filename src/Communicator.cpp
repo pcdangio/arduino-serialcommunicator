@@ -75,57 +75,6 @@ unsigned int Communicator::MessagesAvailable()
   }
   return Output;
 }
-const Message* Communicator::Receive()
-{
-  // Iterate through the RX queue to find the message with the highest priority and lowest sequence number.
-  Inbound* ToRead = NULL;
-  unsigned int RXQLocation = 0;
-
-  for(unsigned int i = 0; i < Communicator::mQSize; i++)
-  {
-    // Check to see if there is anything at this position in the RX queue.
-    if(Communicator::mRXQ[i] != NULL)
-    {
-      // Check to see if ToRead is empty.
-      if(ToRead == NULL)
-      {
-        // Initialize ToRead with the message at this location.
-        ToRead = Communicator::mRXQ[i];
-        RXQLocation = i;
-      }
-      else
-      {
-        // Compare ToRead with the inbound message at this location.
-        if(Communicator::mRXQ[i]->pMessage()->pPriority() > ToRead->pMessage()->pPriority())
-        {
-          // This location in the RXQ has a higher priority.  Set ToRead.
-          ToRead = Communicator::mRXQ[i];
-          RXQLocation = i;
-        }
-        else if(Communicator::mRXQ[i]->pMessage()->pPriority() == ToRead->pMessage()->pPriority())
-        {
-          // Proirities are the same.  Choose the inbound message with the earlier sequence number.
-          if(Communicator::mRXQ[i]->pSequenceNumber() < ToRead->pSequenceNumber())
-          {
-            // This location has the same priority but a lower sequence number.  Set ToRead.
-            ToRead = Communicator::mRXQ[i];
-            RXQLocation = i;
-          }
-        }
-      }
-    }
-  }
-
-  // Create a copy of the message pointer to return.
-  const Message* Output = ToRead->pMessage();
-
-  // Remove the inbound message from the queue.
-  delete Communicator::mRXQ[RXQLocation];
-  Communicator::mRXQ[RXQLocation] = NULL;
-
-  // Return the message.
-  return Output;
-}
 const Message* Communicator::Receive(unsigned int ID)
 {
   // Iterate through the RX queue to find the specified message with the highest priority and lowest sequence number.
@@ -136,7 +85,7 @@ const Message* Communicator::Receive(unsigned int ID)
   {
     // Check to see if there is anything at this position in the RX queue.
     // Also check to see if the message matches the ID.
-    if(Communicator::mRXQ[i] != NULL && Communicator::mRXQ[i]->pMessage()->pID() == ID)
+    if(Communicator::mRXQ[i] != NULL && (ID == 0xFFFF || Communicator::mRXQ[i]->pMessage()->pID() == ID))
     {
       // Check to see if ToRead is empty.
       if(ToRead == NULL)
@@ -308,9 +257,13 @@ void Communicator::SpinRX()
 
 void Communicator::TX(Outbound* Message)
 {
+    // Determine the total length of the message in bytes.
+    unsigned long OriginalLength = Message->pMessage()->pMessageLength();
+    // Grab the original serialized bytes of the message.
+    byte* OriginalBytes = new byte[OriginalLength];
+    Message->pMessage()->Serialize(OriginalBytes);
+    // Scan through the message to see if any escape bytes are needed.
 
-
-  // CALL Sent() METHOD ON THE MESSAGE TO UPDATE COUNTERS!
 
 
   // Send the message.
@@ -321,6 +274,8 @@ void Communicator::TX(Outbound* Message)
       Serial.print(Array[i], HEX);
     }
     Serial.println();
+
+    // Call the Sent method on the outbound message to update timestamps and counters.
     Message->Sent();
 }
 
