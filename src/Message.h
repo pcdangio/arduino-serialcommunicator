@@ -1,3 +1,5 @@
+/// \file Message.h
+/// \brief Defines the SC::Message class.
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
