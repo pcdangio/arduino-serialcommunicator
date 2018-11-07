@@ -1,3 +1,5 @@
+/// \file SerialCommunicator.h
+/// \brief Top level include for this Arduino library.
 #ifndef SERIALCOMMUNICATOR_H
 #define SERIALCOMMUNICATOR_H
 
