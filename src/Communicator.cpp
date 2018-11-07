@@ -9,15 +9,15 @@ Communicator::Communicator(long BaudRate)
   Serial.begin(BaudRate);
 
   // Initialize parameters to default values.
-  Communicator::mQLength = 20;
+  Communicator::mQSize = 20;
   Communicator::mSequenceCounter = 0;
   Communicator::mReceiptTimeout = 100;
-  Communicator::mSendLimit = 5;
+  Communicator::mTransmitLimit = 5;
 
   // Set up queues.
-  Communicator::mTXQ = new Outbound*[Communicator::mQLength];
-  Communicator::mRXQ = new Inbound*[Communicator::mQLength];
-  for(unsigned int i = 0; i < Communicator::mQLength; i++)
+  Communicator::mTXQ = new Outbound*[Communicator::mQSize];
+  Communicator::mRXQ = new Inbound*[Communicator::mQSize];
+  for(unsigned int i = 0; i < Communicator::mQSize; i++)
   {
     Communicator::mTXQ[i] = NULL;
     Communicator::mRXQ[i] = NULL;
@@ -26,7 +26,7 @@ Communicator::Communicator(long BaudRate)
 Communicator::~Communicator()
 {
   // Clean out the queues.
-  for(unsigned int i = 0; i < Communicator::mQLength; i++)
+  for(unsigned int i = 0; i < Communicator::mQSize; i++)
   {
     if(Communicator::mTXQ[i] != NULL)
     {
@@ -45,7 +45,7 @@ Communicator::~Communicator()
 bool Communicator::Send(const Message* Message, bool ReceiptRequired, MessageStatus* Tracker)
 {
   // Find an open spot in the TX queue.
-  for(unsigned int i = 0; i < Communicator::mQLength; i++)
+  for(unsigned int i = 0; i < Communicator::mQSize; i++)
   {
     if(Communicator::mTXQ[i] == NULL)
     {
@@ -66,7 +66,7 @@ unsigned int Communicator::MessagesAvailable()
 {
   // Count the amount of non-null ptrs in the RXQ.
   unsigned int Output = 0;
-  for(unsigned int i = 0; i < Communicator::mQLength; i++)
+  for(unsigned int i = 0; i < Communicator::mQSize; i++)
   {
     if(Communicator::mRXQ[i] != NULL)
     {
@@ -81,7 +81,7 @@ const Message* Communicator::Receive()
   Inbound* ToRead = NULL;
   unsigned int RXQLocation = 0;
 
-  for(unsigned int i = 0; i < Communicator::mQLength; i++)
+  for(unsigned int i = 0; i < Communicator::mQSize; i++)
   {
     // Check to see if there is anything at this position in the RX queue.
     if(Communicator::mRXQ[i] != NULL)
@@ -132,7 +132,7 @@ const Message* Communicator::Receive(unsigned int ID)
   Inbound* ToRead = NULL;
   unsigned int RXQLocation = 0;
 
-  for(unsigned int i = 0; i < Communicator::mQLength; i++)
+  for(unsigned int i = 0; i < Communicator::mQSize; i++)
   {
     // Check to see if there is anything at this position in the RX queue.
     // Also check to see if the message matches the ID.
@@ -193,7 +193,7 @@ void Communicator::SpinTX()
   // Scan through the entire TXQ to find the message with the highest priority and lowest sequence number, but is also not awaiting a timestamp.
   Outbound* ToSend = NULL;
   unsigned int TXQLocation = 0;
-  for(unsigned int i = 0; i < Communicator::mQLength; i++)
+  for(unsigned int i = 0; i < Communicator::mQSize; i++)
   {
     // Check if this address has a valid outbound message in it.
     if(Communicator::mTXQ[i] != NULL)
@@ -246,7 +246,7 @@ void Communicator::SpinTX()
   if(ToSend != NULL)
   {
     // Step 2: Check if this is the first time the message will be sent.
-    if(ToSend->pNSent() == 0)
+    if(ToSend->pNTransmissions() == 0)
     {
       // Message has not been sent yet.
       // Step 2.A.1: Send the message.
@@ -279,7 +279,7 @@ void Communicator::SpinTX()
         // Timeout has elapsed.
         Serial.println("Timeout Elapsed");
         // Step 2.B.1.A.1: Check if the message can be resent.
-        if(ToSend->pNSent() < Communicator::mSendLimit)
+        if(ToSend->CanRetransmit(Communicator::mTransmitLimit))
         {
           // Message has not hit the maximum send limit.
           // Step 2.B.1.A.1.A.1: Resend the message.
@@ -325,9 +325,9 @@ void Communicator::TX(Outbound* Message)
 }
 
 // PROPERTIES
-//unsigned int Communicator::pQueueLength();
-//void Communicator::pQueueLength(unsigned int Length);
+//unsigned int Communicator::pQueueSize();
+//void Communicator::pQueueSize(unsigned int Length);
 //unsigned long Communicator::pReceiptTimeout();
 //void Communicator::pReceiptTimeout(unsigned long Timeout);
-//unsigned int Communicator::pRetries();
-//void Communicator::pRetries(unsigned int Retries);
+//unsigned int Communicator::pMaxRetries();
+//void Communicator::pMaxRetries(unsigned int Retries);

@@ -3,7 +3,7 @@
 using namespace SC;
 
 // CONSTRUCTORS
-Outbound::Outbound(const Message* Message, unsigned long SequenceNumber, bool ReceiptRequired, MessageStatus* Tracker)
+Outbound::Outbound(const SC::Message* Message, unsigned long SequenceNumber, bool ReceiptRequired, MessageStatus* Tracker)
 {
   // Store locals.
   Outbound::mMessage = Message;
@@ -12,8 +12,8 @@ Outbound::Outbound(const Message* Message, unsigned long SequenceNumber, bool Re
   Outbound::mTracker = Tracker;
 
   // Initialize counters.
-  Outbound::mSentTimestamp = 0;
-  Outbound::mNSent = 0;
+  Outbound::mTransmitTimestamp = 0;
+  Outbound::mNTransmissions = 0;
 
   // Set tracker status to queued.
   Outbound::UpdateTracker(MessageStatus::Queued);
@@ -27,10 +27,10 @@ Outbound::~Outbound()
 // METHODS
 void Outbound::Sent()
 {
-  // Update sent timestamp.
-  Outbound::mSentTimestamp = millis();
-  // Update sent counter.
-  Outbound::mNSent++;
+  // Update Transmission timestamp.
+  Outbound::mTransmitTimestamp = millis();
+  // Update Transmission counter.
+  Outbound::mNTransmissions++;
 }
 void Outbound::UpdateTracker(MessageStatus Status)
 {
@@ -44,20 +44,20 @@ bool Outbound::TimeoutElapsed(unsigned long Timeout)
 {
   unsigned long CurrentTime = millis();
   // Check for wrapping around max value of unsigned long.
-  if(Outbound::mSentTimestamp <= CurrentTime)
+  if(Outbound::mTransmitTimestamp <= CurrentTime)
   {
     // No wrapping occured.
-    return ((CurrentTime - Outbound::mSentTimestamp) > Timeout);
+    return ((CurrentTime - Outbound::mTransmitTimestamp) > Timeout);
   }
   else
   {
     // Wrapping occured.
-    return ((((unsigned long)(0xFFFFFFFF) - Outbound::mSentTimestamp) + CurrentTime + 1) > Timeout);
+    return ((((unsigned long)(0xFFFFFFFF) - Outbound::mTransmitTimestamp) + CurrentTime + 1) > Timeout);
   }
 }
-bool Outbound::ContinueToSend(byte SendLimit)
+bool Outbound::CanRetransmit(byte TransmitLimit)
 {
-  return Outbound::mNSent < SendLimit;
+  return Outbound::mNTransmissions < TransmitLimit;
 }
 
 // PROPERTIES
@@ -73,7 +73,7 @@ bool Outbound::pReceiptRequired()
 {
   return Outbound::mReceiptRequired;
 }
-byte Outbound::pNSent()
+byte Outbound::pNTransmissions()
 {
-  return Outbound::mNSent;
+  return Outbound::mNTransmissions;
 }
