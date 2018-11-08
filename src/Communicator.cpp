@@ -46,9 +46,9 @@ Communicator::~Communicator()
 // METHODS
 bool Communicator::Send(const Message* Message, bool ReceiptRequired, MessageStatus* Tracker)
 {
-  // Find an open spot in the TX queue.
-  for(unsigned int i = 0; i < Communicator::mQSize; i++)
-  {
+    // Find an open spot in the TX queue.
+    for(unsigned int i = 0; i < Communicator::mQSize; i++)
+    {
     if(Communicator::mTXQ[i] == NULL)
     {
       // An open space was found.
@@ -59,10 +59,10 @@ bool Communicator::Send(const Message* Message, bool ReceiptRequired, MessageSta
       // Message was successfully added to the queue.
       return true;
     }
-  }
+    }
 
-  // If this point reached, no spot was found and the message was not added to the outgoing queue.
-  return false;
+    // If this point reached, no spot was found and the message was not added to the outgoing queue.
+    return false;
 }
 unsigned int Communicator::MessagesAvailable()
 {
@@ -310,11 +310,7 @@ void Communicator::TX(Outbound* Message)
     PKTBytes[j++] = Communicator::Checksum(PKTBytes, PKTLength - 1);
 
     // Send the message.
-    for(unsigned long i = 0; i < PKTLength; i++)
-    {
-      Serial.print(PKTBytes[i], HEX);
-      Serial.print(" ");
-    }
+    Serial.write(PKTBytes, PKTLength);
     Serial.println();
 
     // Call the Sent method on the outbound message to update timestamps and counters.
