@@ -189,9 +189,6 @@ void Communicator::SpinTX()
     }
   }
 
-  Serial.println("spin");
-
-
   // At this point, ToSend contains the highest priority, lowest sequence message that is ready to be sent (e.g. not waiting for a timeout).
   // Step 1: Check if there is anything that needs to be sent.
   if(ToSend != NULL)
@@ -254,7 +251,140 @@ void Communicator::SpinTX()
 }
 void Communicator::SpinRX()
 {
+    // Look for the header byte.  Read bytes until header is found, timed out, or too many bytes have been read.
+    int Read = Serial.read();
+    byte NReads = 0;
+    while(Read != Communicator::cHeaderByte && Read != -1 && NReads++ < 32)
+    {
+        Read = Serial.read();
+    }
 
+    if(Read != Communicator::cHeaderByte)
+    {
+        // Header byte could not be found in time.  Quit.
+        return;
+    }
+
+    // If this point is reached, a header byte has been found.
+    // Read the next 10 bytes in to ultimately get to the number of data bytes in the message.
+    byte* PKTBytes = new byte[11];
+    unsigned long PKTLength = 11;
+    // Set the first byte of the packet to the header byte.
+    PKTBytes[0] = Communicator::cHeaderByte;
+    if(Serial.readBytes(&PKTBytes[1], 10) != 10)
+    {
+        // Timeout while trying to read up through NDataBytes.  Quit.
+        delete [] PKTBytes;
+        return;
+    }
+
+    // If this point is reached, the first 11 bytes of the packet have been read.
+    // Deserialize NDataBytes.
+    unsigned int NDataBytes = SC::Deserialize<unsigned int>(PKTBytes, 9);
+    // Resize the PKTBytes to accomodate the databytes + checksum.
+    byte* TMPPKT = new byte[PKTLength + NDataBytes + 1];
+    for(unsigned long i = 0; i < PKTLength; i++)
+    {
+        TMPPKT[i] = PKTBytes[i];
+    }
+    delete [] PKTBytes;
+    PKTBytes = TMPPKT;
+    PKTLength += NDataBytes + 1;
+    // Attempt to read the remainder of the packet.
+    if(Serial.readBytes(&TMPPKT[11], NDataBytes + 1) != NDataBytes + 1)
+    {
+        // Timeout while trying to read data bytes + checksum. Quit.
+        delete [] PKTBytes;
+        return;
+    }
+
+
+    // FULL PACKET HAS BEEN READ
+
+    // First, make sure the checksum matches.
+    bool ChecksumOK = PKTBytes[PKTLength - 1] == Communicator::Checksum(PKTBytes, PKTLength - 1);
+    // Second, get the sequence number from the packet.
+    unsigned long SequenceNumber = SC::Deserialize<unsigned long>(PKTBytes, 1);
+
+    // Next, handle receipts.
+    switch((Communicator::ReceiptType)PKTBytes[5])
+    {
+    case Communicator::ReceiptType::NotRequired:
+        // Do nothing.
+        break;
+    case Communicator::ReceiptType::Required:
+        // Send the receipt.
+        // Draft message.
+        byte* Receipt = new byte[12];
+        for(byte i = 0; i < 5; i++)
+        {
+            Receipt[i] = PKTBytes[i];
+        }
+        if(ChecksumOK)
+        {
+            Receipt[5] = (byte)Communicator::ReceiptType::Received;
+        }
+        else
+        {
+            Receipt[5] = (byte)Communicator::ReceiptType::ChecksumMismatch;
+        }
+        for(byte i = 6; i < 9; i++)
+        {
+            Receipt[i] = PKTBytes[i];
+        }
+        Receipt[9] = 0;
+        Receipt[10] = 0;
+        Receipt[11] = Communicator::Checksum(Receipt, 10);
+        // Send message.
+        Serial.write(Receipt, 12);
+        break;
+    case Communicator::ReceiptType::Received:
+        // Remove the associated message from the TXQ if it is still in there.
+        for(byte i = 0; i < Communicator::mQSize; i++)
+        {
+            if(Communicator::mTXQ[i] != NULL && Communicator::mTXQ[i]->pSequenceNumber() == SequenceNumber)
+            {
+                // Update the tracker status.
+                Communicator::mTXQ[i]->UpdateTracker(MessageStatus::Received);
+                // Remove from the queue.
+                delete Communicator::mTXQ[i];
+                Communicator::mTXQ[i] = NULL;
+                // Break from the for loop.
+                break;
+            }
+        }
+        break;
+    case Communicator::ReceiptType::ChecksumMismatch:
+        // Don't do anything.  This can be used in the future (e.g. immediate retransmit from TXQ instead of waiting for timeout).
+        break;
+    }
+
+    // Lastly, emplace this as an inbound message.
+    if(ChecksumOK)
+    {
+        // Find an open position in the RXQ.
+        int Location = -1;
+        for(byte i = 0; i < Communicator::mQSize; i++)
+        {
+            if(Communicator::mRXQ[i] == NULL)
+            {
+                Location = i;
+                break;
+            }
+        }
+        if(Location >= 0)
+        {
+            // Create the message itself.
+            Message* MSG = new Message(PKTBytes, 6);
+            // Add a new Inbound to the RXQ.
+            Communicator::mRXQ[Location] = new Inbound(MSG, SequenceNumber);
+            Serial.print("RXQ: ");
+            Serial.println(Communicator::MessagesAvailable());
+        }
+    }
+
+    // Clean up PKTBytes.
+    delete PKTBytes;
 }
 
 void Communicator::TX(Outbound* Message)

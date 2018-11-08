@@ -127,6 +127,18 @@ public:
     void pMaxRetries(unsigned int Retries);
 
 private:
+    // ENUMS
+    ///
+    /// \brief Enumerates the different levels of the receipt field within a message.
+    ///
+    enum class ReceiptType
+    {
+        NotRequired = 0,        ///< In a transmitted message, indicates that no receipt is required from the receiver.
+        Required = 1,           ///< In a transmitted message, indicates that a receipt is required from the receiver.
+        Received = 2,           ///< In a receipt message, indicates that the message was properly received.
+        ChecksumMismatch = 3    ///< In a receipt message, indicates that the message was received, but the checksum did not match.
+    };
+
     // CONSTANTS
     ///
     /// \brief cHeaderByte Stores the header byte flag.
