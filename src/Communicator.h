@@ -178,6 +178,13 @@ private:
     /// \param Message The outbound message to transmit.
     ///
     void TX(Outbound* Message);
+    ///
+    /// \brief Checksum Calculates the XOR checksum of the provided data array.
+    /// \param Array The array of data to calculate the checksum for.
+    /// \param Length The length of the data array.
+    /// \return The XOR checksum of the data.
+    ///
+    byte Checksum(byte* Array, unsigned long Length);
 };
 
 }

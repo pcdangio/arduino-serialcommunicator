@@ -275,17 +275,18 @@ void Communicator::TX(Outbound* Message)
     }
 
     // Create packet byte array.
-    // Add in escape bytes, plus the 7 other bytes of the packet (1 Header, 4 Sequence, 2 CRC)
+    // Add in escape bytes, plus the 7 other bytes of the packet (1 Header, 4 Sequence, 1 Receipt, 1 Checksum)
     unsigned long PKTLength = Message->pMessage()->pMessageLength() + Escapes + 7;
     byte* PKTBytes = new byte[PKTLength];
 
     // Write the front part of the packet.
     PKTBytes[0] = Communicator::cHeaderByte;
     SC::Serialize<unsigned long>(PKTBytes, 1, Message->pSequenceNumber());
+    PKTBytes[5] = byte(Message->pReceiptRequired());
 
     // Write the message bytes into the packet.
     // Use a j iterator to keep track of the write position in the EscapedBytes array.
-    unsigned long j = 5;
+    unsigned long j = 6;
     // Iterate over the unescaped bytes.
     for(unsigned long i = 0; i < MSGLength; i++)
     {
@@ -305,13 +306,14 @@ void Communicator::TX(Outbound* Message)
     }
 
     // Calculate the CRC.
-    PKTBytes[j++] = 0xCC;
-    PKTBytes[j++] = 0xDD;
+    // Use length of PTKLength - 1 because the last position in the array is for the checksum itself.
+    PKTBytes[j++] = Communicator::Checksum(PKTBytes, PKTLength - 1);
 
     // Send the message.
     for(unsigned long i = 0; i < PKTLength; i++)
     {
       Serial.print(PKTBytes[i], HEX);
+      Serial.print(" ");
     }
     Serial.println();
 
@@ -321,6 +323,15 @@ void Communicator::TX(Outbound* Message)
     // Delete the packet and message bytes.
     delete [] MSGBytes;
     delete [] PKTBytes;
+}
+byte Communicator::Checksum(byte *Array, unsigned long Length)
+{
+    byte Checksum = 0;
+    for(unsigned long i = 0; i < Length; i++)
+    {
+        Checksum ^= Array[i];
+    }
+    return Checksum;
 }
 
 // PROPERTIES
