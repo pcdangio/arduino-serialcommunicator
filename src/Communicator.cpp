@@ -13,7 +13,7 @@ Communicator::Communicator(long BaudRate)
   // Initialize parameters to default values.
   Communicator::mQSize = 20;
   Communicator::mSequenceCounter = 0;
-  Communicator::mReceiptTimeout = 5000;
+  Communicator::mReceiptTimeout = 100;
   Communicator::mTransmitLimit = 5;
 
   // Set up queues.
@@ -205,7 +205,6 @@ void Communicator::SpinTX()
         // Receipt is required.
         // Step 2.A.2.A.1: Leave in the TXQ, and update the tracker status.
         ToSend->UpdateTracker(MessageStatus::Verifying);
-        Serial.println("First Send: Receipt Required");
       }
       else
       {
@@ -215,7 +214,6 @@ void Communicator::SpinTX()
         // Step 2.A.2.B.2: Remove this outbound message from the queue.
         delete Communicator::mTXQ[TXQLocation];
         Communicator::mTXQ[TXQLocation] = NULL;
-        Serial.println("First Send: Receipt Not Required");
       }
     }
     else
@@ -225,14 +223,12 @@ void Communicator::SpinTX()
       if(ToSend->TimeoutElapsed(Communicator::mReceiptTimeout))
       {
         // Timeout has elapsed.
-        Serial.println("Timeout Elapsed");
         // Step 2.B.1.A.1: Check if the message can be resent.
         if(ToSend->CanRetransmit(Communicator::mTransmitLimit))
         {
           // Message has not hit the maximum send limit.
           // Step 2.B.1.A.1.A.1: Resend the message.
           Communicator::TX(ToSend);
-          Serial.println("Message Resent.");
         }
         else
         {
@@ -242,7 +238,6 @@ void Communicator::SpinTX()
           // Step 2.B.1.A.1.B.2: Remove from the TXQ.
           delete Communicator::mTXQ[TXQLocation];
           Communicator::mTXQ[TXQLocation] = NULL;
-          Serial.println("Max retries reached");
         }
       }
       // Otherwise don't do anything.  The else case for 2.B.1 should never be reached since messages waiting for timeout are skipped.
@@ -305,50 +300,54 @@ void Communicator::SpinRX()
     unsigned long SequenceNumber = SC::Deserialize<unsigned long>(PKTBytes, 1);
 
     // Next, handle receipts.
-    switch((Communicator::ReceiptType)PKTBytes[5])
+    switch(Communicator::ReceiptType(PKTBytes[5]))
     {
     case Communicator::ReceiptType::NotRequired:
         // Do nothing.
         break;
     case Communicator::ReceiptType::Required:
-        // Send the receipt.
-        // Draft message.
-        byte* Receipt = new byte[12];
-        for(byte i = 0; i < 5; i++)
         {
-            Receipt[i] = PKTBytes[i];
+            // Send the receipt.
+            // Draft message.
+            byte* Receipt = new byte[12];
+            for(byte i = 0; i < 5; i++)
+            {
+                Receipt[i] = PKTBytes[i];
+            }
+            if(ChecksumOK)
+            {
+                Receipt[5] = (byte)Communicator::ReceiptType::Received;
+            }
+            else
+            {
+                Receipt[5] = (byte)Communicator::ReceiptType::ChecksumMismatch;
+            }
+            for(byte i = 6; i < 9; i++)
+            {
+                Receipt[i] = PKTBytes[i];
+            }
+            Receipt[9] = 0;
+            Receipt[10] = 0;
+            Receipt[11] = Communicator::Checksum(Receipt, 10);
+            // Send message.
+            Communicator::TX(Receipt, 12);
         }
-        if(ChecksumOK)
-        {
-            Receipt[5] = (byte)Communicator::ReceiptType::Received;
-        }
-        else
-        {
-            Receipt[5] = (byte)Communicator::ReceiptType::ChecksumMismatch;
-        }
-        for(byte i = 6; i < 9; i++)
-        {
-            Receipt[i] = PKTBytes[i];
-        }
-        Receipt[9] = 0;
-        Receipt[10] = 0;
-        Receipt[11] = Communicator::Checksum(Receipt, 10);
-        // Send message.
-        Communicator::TX(Receipt, 12);
         break;
     case Communicator::ReceiptType::Received:
-        // Remove the associated message from the TXQ if it is still in there.
-        for(byte i = 0; i < Communicator::mQSize; i++)
         {
-            if(Communicator::mTXQ[i] != NULL && Communicator::mTXQ[i]->pSequenceNumber() == SequenceNumber)
+            // Remove the associated message from the TXQ if it is still in there.
+            for(byte i = 0; i < Communicator::mQSize; i++)
             {
-                // Update the tracker status.
-                Communicator::mTXQ[i]->UpdateTracker(MessageStatus::Received);
-                // Remove from the queue.
-                delete Communicator::mTXQ[i];
-                Communicator::mTXQ[i] = NULL;
-                // Break from the for loop.
-                break;
+                if(Communicator::mTXQ[i] != NULL && Communicator::mTXQ[i]->pSequenceNumber() == SequenceNumber)
+                {
+                    // Update the tracker status.
+                    Communicator::mTXQ[i]->UpdateTracker(MessageStatus::Received);
+                    // Remove from the queue.
+                    delete Communicator::mTXQ[i];
+                    Communicator::mTXQ[i] = NULL;
+                    // Break from the for loop.
+                    break;
+                }
             }
         }
         break;
