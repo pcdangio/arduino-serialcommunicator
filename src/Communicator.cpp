@@ -9,11 +9,12 @@ Communicator::Communicator(long BaudRate)
 {
   // Setup the serial port.
   Serial.begin(BaudRate);
+  Serial.setTimeout(30);
 
   // Initialize parameters to default values.
   Communicator::mQSize = 20;
   Communicator::mSequenceCounter = 0;
-  Communicator::mReceiptTimeout = 100;
+  Communicator::mReceiptTimeout = 5000;
   Communicator::mTransmitLimit = 5;
 
   // Set up queues.
@@ -271,10 +272,10 @@ void Communicator::SpinRX()
     unsigned long PKTLength = 11;
     // Set the first byte of the packet to the header byte.
     PKTBytes[0] = Communicator::cHeaderByte;
-    if(Serial.readBytes(&PKTBytes[1], 10) != 10)
+    // Read in the next ten bytes.
+    if(Communicator::RX(&PKTBytes[1], 10) != 10)
     {
-        // Timeout while trying to read up through NDataBytes.  Quit.
-        delete [] PKTBytes;
+        // Timeout occured.
         return;
     }
 
@@ -291,13 +292,11 @@ void Communicator::SpinRX()
     PKTBytes = TMPPKT;
     PKTLength += NDataBytes + 1;
     // Attempt to read the remainder of the packet.
-    if(Serial.readBytes(&TMPPKT[11], NDataBytes + 1) != NDataBytes + 1)
+    if(Communicator::RX(&PKTBytes[11], NDataBytes + 1) != NDataBytes + 1)
     {
-        // Timeout while trying to read data bytes + checksum. Quit.
-        delete [] PKTBytes;
+        // Timeout occured.
         return;
     }
-
 
     // FULL PACKET HAS BEEN READ
 
@@ -336,7 +335,7 @@ void Communicator::SpinRX()
         Receipt[10] = 0;
         Receipt[11] = Communicator::Checksum(Receipt, 10);
         // Send message.
-        Serial.write(Receipt, 12);
+        Communicator::TX(Receipt, 12);
         break;
     case Communicator::ReceiptType::Received:
         // Remove the associated message from the TXQ if it is still in there.
@@ -378,8 +377,6 @@ void Communicator::SpinRX()
             Message* MSG = new Message(PKTBytes, 6);
             // Add a new Inbound to the RXQ.
             Communicator::mRXQ[Location] = new Inbound(MSG, SequenceNumber);
-            Serial.print("RXQ: ");
-            Serial.println(Communicator::MessagesAvailable());
         }
     }
 
@@ -394,19 +391,9 @@ void Communicator::TX(Outbound* Message)
     byte* MSGBytes = new byte[MSGLength];
     Message->pMessage()->Serialize(MSGBytes);
 
-    // Scan through the message to see how many escape bytes are needed.
-    unsigned long Escapes = 0;
-    for(unsigned long i = 0; i < MSGLength; i++)
-    {
-        if(MSGBytes[i] == Communicator::cEscapeByte || MSGBytes[i] == Communicator::cHeaderByte)
-        {
-            Escapes++;
-        }
-    }
-
     // Create packet byte array.
-    // Add in escape bytes, plus the 7 other bytes of the packet (1 Header, 4 Sequence, 1 Receipt, 1 Checksum)
-    unsigned long PKTLength = Message->pMessage()->pMessageLength() + Escapes + 7;
+    // Add in the message length + 7 bytes of the packet (1 Header, 4 Sequence, 1 Receipt, 1 Checksum)
+    unsigned long PKTLength = Message->pMessage()->pMessageLength() + 7;
     byte* PKTBytes = new byte[PKTLength];
 
     // Write the front part of the packet.
@@ -415,33 +402,18 @@ void Communicator::TX(Outbound* Message)
     PKTBytes[5] = byte(Message->pReceiptRequired());
 
     // Write the message bytes into the packet.
-    // Use a j iterator to keep track of the write position in the EscapedBytes array.
-    unsigned long j = 6;
-    // Iterate over the unescaped bytes.
-    for(unsigned long i = 0; i < MSGLength; i++)
-    {
-        // Check if the current byte needs to be escaped.
-        if(MSGBytes[i] == Communicator::cEscapeByte || MSGBytes[i] == Communicator::cHeaderByte)
-        {
-            // Escape byte necessary.
-            PKTBytes[j++] = Communicator::cEscapeByte;
-            // Subtract one from the original byte.
-            PKTBytes[j++] = MSGBytes[i] - 1;
-        }
-        else
-        {
-            // No escape byte needed, copy directly into escaped bytes and increment write position.
-           PKTBytes[j++] = MSGBytes[i];
-        }
-    }
+    Message->pMessage()->Serialize(PKTBytes, 6);
+//    for(int i = 0; i < MSGLength; i++)
+//    {
+//        PKTBytes[6 + i] = MSGBytes[i];
+//    }
 
     // Calculate the CRC.
     // Use length of PTKLength - 1 because the last position in the array is for the checksum itself.
-    PKTBytes[j++] = Communicator::Checksum(PKTBytes, PKTLength - 1);
+    PKTBytes[PKTLength - 1] = Communicator::Checksum(PKTBytes, PKTLength - 1);
 
-    // Send the message.
-    Serial.write(PKTBytes, PKTLength);
-    Serial.println();
+    // Send the message via serial.
+    Communicator::TX(PKTBytes, PKTLength);
 
     // Call the Sent method on the outbound message to update timestamps and counters.
     Message->Sent();
@@ -450,12 +422,64 @@ void Communicator::TX(Outbound* Message)
     delete [] MSGBytes;
     delete [] PKTBytes;
 }
-byte Communicator::Checksum(byte *Array, unsigned long Length)
+void Communicator::TX(byte *Packet, unsigned long Length)
+{
+    // Send header first.
+    Serial.write(Packet[0]);
+    // Write the rest of the bytes, with escapement.
+    for(unsigned long i = 1; i < Length; i++)
+    {
+        if(Packet[i] == Communicator::cHeaderByte || Packet[i] == Communicator::cEscapeByte)
+        {
+            Serial.write(Communicator::cEscapeByte);
+            Serial.write(Packet[i] - 1);
+        }
+        else
+        {
+            Serial.write(Packet[i]);
+        }
+    }
+}
+unsigned long Communicator::RX(byte *Buffer, unsigned long Length)
+{
+    unsigned long BytesRead = 0;
+    // Iterate over the number of bytes.
+    for(unsigned long i = 0; i < Length; i++)
+    {
+        // Read the next byte.
+        int Read = Serial.read();
+        if(Read == -1)
+        {
+            // Timeout occured.
+            return BytesRead;
+        }
+        else if(Read == Communicator::cEscapeByte)
+        {
+            // Escape byte.  Read in the next byte and unescape it.
+            int Next = Serial.read();
+            if(Next == -1)
+            {
+                // Time occured.
+                return BytesRead;
+            }
+            Buffer[i] = Next + 1;
+            BytesRead++;
+        }
+        else
+        {
+            // Regular byte.
+            Buffer[i] = Read;
+            BytesRead++;
+        }
+    }
+    return BytesRead;
+}
+byte Communicator::Checksum(byte *Packet, unsigned long Length)
 {
     byte Checksum = 0;
     for(unsigned long i = 0; i < Length; i++)
     {
-        Checksum ^= Array[i];
+        Checksum ^= Packet[i];
     }
     return Checksum;
 }

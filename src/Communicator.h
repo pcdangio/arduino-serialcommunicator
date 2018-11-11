@@ -143,11 +143,11 @@ private:
     ///
     /// \brief cHeaderByte Stores the header byte flag.
     ///
-    const byte cHeaderByte = 0xAA;
+    static const byte cHeaderByte = 0xAA;
     ///
     /// \brief cEscapeByte Stores the escape byte flag.
     ///
-    const byte cEscapeByte = 0x1B;
+    static const byte cEscapeByte = 0x1B;
 
     // ATTRIBUTES
     ///
@@ -190,6 +190,21 @@ private:
     /// \param Message The outbound message to transmit.
     ///
     void TX(Outbound* Message);
+    ///
+    /// \brief TX Writes the specified bytes to the serial buffer.
+    /// \param Packet The fully formed packet to write.
+    /// \param Length The length of the packet to write.
+    /// \details This will send bytes with proper escapement.
+    ///
+    void TX(byte* Packet, unsigned long Length);
+    ///
+    /// \brief RX Reads the specified amount of bytes from the serial buffer.
+    /// \param Buffer The pre-allocated buffer to store the read bytes in.
+    /// \param Length The number of bytes to read.
+    /// \return The number of bytes read.  This can be less than the requested amount if a timeout occurs.
+    /// \details This method will read bytes and correct for escape bytes.
+    ///
+    unsigned long RX(byte* Buffer, unsigned long Length);
     ///
     /// \brief Checksum Calculates the XOR checksum of the provided data array.
     /// \param Array The array of data to calculate the checksum for.
