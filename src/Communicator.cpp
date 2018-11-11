@@ -446,12 +446,14 @@ unsigned long Communicator::RX(byte *Buffer, unsigned long Length)
     {
         // Read the next byte.
         int Read = Serial.read();
-        if(Read == -1)
+        switch(Read)
+        {
+        case -1:
         {
             // Timeout occured.
             return BytesRead;
         }
-        else if(Read == Communicator::cEscapeByte)
+        case Communicator::cEscapeByte:
         {
             // Escape byte.  Read in the next byte and unescape it.
             int Next = Serial.read();
@@ -462,12 +464,15 @@ unsigned long Communicator::RX(byte *Buffer, unsigned long Length)
             }
             Buffer[i] = Next + 1;
             BytesRead++;
+            break;
         }
-        else
+        default:
         {
             // Regular byte.
             Buffer[i] = Read;
             BytesRead++;
+            break;
+        }
         }
     }
     return BytesRead;
