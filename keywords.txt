@@ -1,2 +1,18 @@
+# SC::Communicator Class
 Communicator	KEYWORD3
+Send	KEYWORD2
+MessagesAvailable   KEYWORD2
+Receive	KEYWORD2
+Spin	KEYWORD2
+pQueueSize  KEYWORD2
+pReceiptTimeout	KEYWORD2
+pMaxRetries KEYWORD2
+
+# SC::Message Class
 Message	KEYWORD3
+SetData	KEYWORD2
+GetData	KEYWORD2
+pID KEYWORD2
+pPriority   KEYWORD2
+pDataLength KEYWORD2
+pMessageLength	KEYWORD2
