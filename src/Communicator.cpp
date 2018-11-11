@@ -9,7 +9,6 @@ Communicator::Communicator(long BaudRate)
 {
   // Setup the serial port.
   Serial.begin(BaudRate);
-  Serial.setTimeout(30);
 
   // Initialize parameters to default values.
   Communicator::mQSize = 20;
@@ -485,9 +484,58 @@ byte Communicator::Checksum(byte *Packet, unsigned long Length)
 }
 
 // PROPERTIES
-//unsigned int Communicator::pQueueSize();
-//void Communicator::pQueueSize(unsigned int Length);
-//unsigned long Communicator::pReceiptTimeout();
-//void Communicator::pReceiptTimeout(unsigned long Timeout);
-//unsigned int Communicator::pMaxRetries();
-//void Communicator::pMaxRetries(unsigned int Retries);
+unsigned int Communicator::pQueueSize()
+{
+    return Communicator::mQSize;
+}
+void Communicator::pQueueSize(unsigned int Length)
+{
+    // Check if a resize is necessary.
+    if(Length != Communicator::mQSize)
+    {
+        // Need to resize the queues.
+
+        // Create temporary queues.
+        Outbound** TMPTXQ = new Outbound*[Length];
+        Inbound** TMPRXQ = new Inbound*[Length];
+
+        // Fill the temporary queues.
+        for(unsigned int i = 0; i < min(Length, Communicator::mQSize); i++)
+        {
+            TMPTXQ[i] = Communicator::mTXQ[i];
+            TMPRXQ[i] = Communicator::mRXQ[i];
+        }
+
+        // Check if the rest of the temporary queue needs to be NULLED out.
+        for(unsigned int i = Communicator::mQSize; i < Length; i++)
+        {
+            TMPTXQ[i] = NULL;
+            TMPRXQ[i] = NULL;
+        }
+
+        // Replace the queues.
+        delete [] Communicator::mTXQ;
+        delete [] Communicator::mRXQ;
+        Communicator::mTXQ = TMPTXQ;
+        Communicator::mRXQ = TMPRXQ;
+
+        // Update the QSize.
+        Communicator::mQSize = Length;
+    }
+}
+unsigned long Communicator::pReceiptTimeout()
+{
+    return Communicator::mReceiptTimeout;
+}
+void Communicator::pReceiptTimeout(unsigned long Timeout)
+{
+    Communicator::mReceiptTimeout = Timeout;
+}
+unsigned int Communicator::pMaxRetries()
+{
+    return Communicator::mTransmitLimit;
+}
+void Communicator::pMaxRetries(unsigned int Retries)
+{
+    Communicator::mTransmitLimit = Retries;
+}
