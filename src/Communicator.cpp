@@ -49,19 +49,22 @@ bool Communicator::Send(const Message* Message, bool ReceiptRequired, MessageSta
     // Find an open spot in the TX queue.
     for(unsigned int i = 0; i < Communicator::mQSize; i++)
     {
-    if(Communicator::mTXQ[i] == NULL)
-    {
-      // An open space was found.
-      // Create a new outgoing message in the opening.  It's tracker status is automatically set to queued.
-      // Add the sequence number and increment it.
-      Communicator::mTXQ[i] = new Outbound(Message, Communicator::mSequenceCounter++, ReceiptRequired, Tracker);
+        if(Communicator::mTXQ[i] == NULL)
+        {
+          // An open space was found.
+          // Create a new outgoing message in the opening.  It's tracker status is automatically set to queued.
+          // Add the sequence number and increment it.
+          Communicator::mTXQ[i] = new Outbound(Message, Communicator::mSequenceCounter++, ReceiptRequired, Tracker);
 
-      // Message was successfully added to the queue.
-      return true;
-    }
+          // Message was successfully added to the queue.
+          return true;
+        }
     }
 
     // If this point reached, no spot was found and the message was not added to the outgoing queue.
+    // Delete the message.
+    delete Message;
+    // Return false.
     return false;
 }
 unsigned int Communicator::MessagesAvailable()
@@ -391,7 +394,7 @@ void Communicator::TX(Outbound* Message)
 
     // Create packet byte array.
     // Add in the message length + 7 bytes of the packet (1 Header, 4 Sequence, 1 Receipt, 1 Checksum)
-    unsigned long PKTLength = Message->pMessage()->pMessageLength() + 7;
+    unsigned long PKTLength = MSGLength + 7;
     byte* PKTBytes = new byte[PKTLength];
 
     // Write the front part of the packet.
@@ -401,10 +404,6 @@ void Communicator::TX(Outbound* Message)
 
     // Write the message bytes into the packet.
     Message->pMessage()->Serialize(PKTBytes, 6);
-//    for(int i = 0; i < MSGLength; i++)
-//    {
-//        PKTBytes[6 + i] = MSGBytes[i];
-//    }
 
     // Calculate the CRC.
     // Use length of PTKLength - 1 because the last position in the array is for the checksum itself.
