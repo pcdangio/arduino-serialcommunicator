@@ -8,7 +8,7 @@ using namespace SC;
 Communicator::Communicator(long BaudRate)
 {
   // Setup the serial port.
-  Serial.begin(BaudRate);
+  Serial1.begin(BaudRate);
 
   // Initialize parameters to default values.
   Communicator::mQSize = 20;
@@ -250,11 +250,11 @@ void Communicator::SpinTX()
 void Communicator::SpinRX()
 {
     // Look for the header byte.  Read bytes until header is found, timed out, or too many bytes have been read.
-    int Read = Serial.read();
+    int Read = Serial1.read();
     byte NReads = 0;
     while(Read != Communicator::cHeaderByte && Read != -1 && NReads++ < 32)
     {
-        Read = Serial.read();
+        Read = Serial1.read();
     }
 
     if(Read != Communicator::cHeaderByte)
@@ -409,7 +409,7 @@ void Communicator::TX(Outbound* Message)
     // Use length of PTKLength - 1 because the last position in the array is for the checksum itself.
     PKTBytes[PKTLength - 1] = Communicator::Checksum(PKTBytes, PKTLength - 1);
 
-    // Send the message via serial.
+    // Send the message via Serial1.
     Communicator::TX(PKTBytes, PKTLength);
 
     // Call the Sent method on the outbound message to update timestamps and counters.
@@ -422,18 +422,18 @@ void Communicator::TX(Outbound* Message)
 void Communicator::TX(byte *Packet, unsigned long Length)
 {
     // Send header first.
-    Serial.write(Packet[0]);
+    Serial1.write(Packet[0]);
     // Write the rest of the bytes, with escapement.
     for(unsigned long i = 1; i < Length; i++)
     {
         if(Packet[i] == Communicator::cHeaderByte || Packet[i] == Communicator::cEscapeByte)
         {
-            Serial.write(Communicator::cEscapeByte);
-            Serial.write(Packet[i] - 1);
+            Serial1.write(Communicator::cEscapeByte);
+            Serial1.write(Packet[i] - 1);
         }
         else
         {
-            Serial.write(Packet[i]);
+            Serial1.write(Packet[i]);
         }
     }
 }
@@ -444,7 +444,7 @@ unsigned long Communicator::RX(byte *Buffer, unsigned long Length)
     for(unsigned long i = 0; i < Length; i++)
     {
         // Read the next byte.
-        int Read = Serial.read();
+        int Read = Serial1.read();
         switch(Read)
         {
         case -1:
@@ -455,7 +455,7 @@ unsigned long Communicator::RX(byte *Buffer, unsigned long Length)
         case Communicator::cEscapeByte:
         {
             // Escape byte.  Read in the next byte and unescape it.
-            int Next = Serial.read();
+            int Next = Serial1.read();
             if(Next == -1)
             {
                 // Time occured.
