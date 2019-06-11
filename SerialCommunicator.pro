@@ -3,7 +3,15 @@ CONFIG += c++11
 CONFIG -= app_bundle
 CONFIG -= qt
 
-INCLUDEPATH += $(ProgramFiles)\Arduino\hardware\arduino\avr\cores\arduino
+win32
+{
+    INCLUDEPATH += $(ProgramFiles)\Arduino\hardware\arduino\avr\cores\arduino
+}
+unix
+{
+    INCLUDEPATH += /opt/arduino-1.8.9/hardware/arduino/avr/cores/arduino
+}
+
 INCLUDEPATH += $$PWD\src
 
 SOURCES += \
