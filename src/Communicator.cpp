@@ -5,7 +5,7 @@
 using namespace SC;
 
 // CONSTRUCTORS
-Communicator::Communicator(long BaudRate, int Config)
+Communicator::Communicator(long BaudRate, unsigned int Config)
 {
   // Setup the serial port.
   Serial1.begin(BaudRate, Config);

@@ -27,7 +27,7 @@ public:
     /// \param BaudRate The baud rate (in bps) to use for serial communications.
     /// \param Config The serial configuration for data bits, parity, and stop bits. Enumeration provided by Arduino.
     ///
-    Communicator(long BaudRate, int Config = SERIAL_8N1);
+    Communicator(long BaudRate, unsigned int Config = SERIAL_8N1);
     ~Communicator();
 
     // METHODS
