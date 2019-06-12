@@ -331,25 +331,28 @@ void Communicator::SpinRX()
             }
             Receipt[9] = 0;
             Receipt[10] = 0;
-            Receipt[11] = Communicator::Checksum(Receipt, 10);
+            Receipt[11] = Communicator::Checksum(Receipt, 11);
             // Send message.
             Communicator::TX(Receipt, 12);
         }
         break;
     case Communicator::ReceiptType::Received:
         {
-            // Remove the associated message from the TXQ if it is still in there.
-            for(byte i = 0; i < Communicator::mQSize; i++)
+            if(ChecksumOK)
             {
-                if(Communicator::mTXQ[i] != NULL && Communicator::mTXQ[i]->pSequenceNumber() == SequenceNumber)
+                // Remove the associated message from the TXQ if it is still in there.
+                for(byte i = 0; i < Communicator::mQSize; i++)
                 {
-                    // Update the tracker status.
-                    Communicator::mTXQ[i]->UpdateTracker(MessageStatus::Received);
-                    // Remove from the queue.
-                    delete Communicator::mTXQ[i];
-                    Communicator::mTXQ[i] = NULL;
-                    // Break from the for loop.
-                    break;
+                    if(Communicator::mTXQ[i] != NULL && Communicator::mTXQ[i]->pSequenceNumber() == SequenceNumber)
+                    {
+                        // Update the tracker status.
+                        Communicator::mTXQ[i]->UpdateTracker(MessageStatus::Received);
+                        // Remove from the queue.
+                        delete Communicator::mTXQ[i];
+                        Communicator::mTXQ[i] = NULL;
+                        // Break from the for loop.
+                        break;
+                    }
                 }
             }
         }
