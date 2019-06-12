@@ -5,10 +5,10 @@
 using namespace SC;
 
 // CONSTRUCTORS
-Communicator::Communicator(long BaudRate)
+Communicator::Communicator(long BaudRate, int Config)
 {
   // Setup the serial port.
-  Serial1.begin(BaudRate);
+  Serial1.begin(BaudRate, Config);
 
   // Initialize parameters to default values.
   Communicator::mQSize = 20;
