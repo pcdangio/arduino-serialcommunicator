@@ -3,12 +3,10 @@ CONFIG += c++11
 CONFIG -= app_bundle
 CONFIG -= qt
 
-win32
-{
+win32{
     INCLUDEPATH += $(ProgramFiles)\Arduino\hardware\arduino\avr\cores\arduino
 }
-unix
-{
+unix{
     INCLUDEPATH += /opt/arduino-1.8.9/hardware/arduino/avr/cores/arduino
 }
 
