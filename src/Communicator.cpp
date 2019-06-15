@@ -9,6 +9,7 @@ Communicator::Communicator(long BaudRate, unsigned int Config)
 {
   // Setup the serial port.
   Serial1.begin(BaudRate, Config);
+  Serial1.setTimeout(30);
 
   // Initialize parameters to default values.
   Communicator::mQSize = 20;
@@ -424,6 +425,12 @@ void Communicator::TX(Outbound* Message)
 }
 void Communicator::TX(byte *Packet, unsigned long Length)
 {
+    // Make sure there is enough room in the output buffer.
+    while(Serial1.availableForWrite() < Length)
+    {
+        // Wait
+        delayMicroseconds(10);
+    }
     // Send header first.
     Serial1.write(Packet[0]);
     // Write the rest of the bytes, with escapement.
@@ -442,42 +449,41 @@ void Communicator::TX(byte *Packet, unsigned long Length)
 }
 unsigned long Communicator::RX(byte *Buffer, unsigned long Length)
 {
-    unsigned long BytesRead = 0;
-    // Iterate over the number of bytes.
-    for(unsigned long i = 0; i < Length; i++)
+    unsigned long CurrentLength = 0;
+    while(CurrentLength < Length)
     {
-        // Read the next byte.
-        int Read = Serial1.read();
-        switch(Read)
+        unsigned long RemainingLength = Length - CurrentLength;
+        byte* TempBuffer = new byte[RemainingLength];
+        unsigned int NRead = Serial1.readBytes(TempBuffer, RemainingLength);
+        if(NRead < RemainingLength)
         {
-        case -1:
-        {
-            // Timeout occured.
-            return BytesRead;
+            // Serial port timed out, quit.
+            return 0;
         }
-        case Communicator::cEscapeByte:
+        // Read through temporary buffer and extract bytes into the actual buffer.
+        bool UnescapeNext = false;
+        for(unsigned long i = 0; i < RemainingLength; i++)
         {
-            // Escape byte.  Read in the next byte and unescape it.
-            int Next = Serial1.read();
-            if(Next == -1)
+            if(TempBuffer[i] == Communicator::cEscapeByte)
             {
-                // Time occured.
-                return BytesRead;
+                // Mark escape flag.
+                UnescapeNext = true;
             }
-            Buffer[i] = Next + 1;
-            BytesRead++;
-            break;
+            else
+            {
+                // Copy the byte.
+                // Unescaping is adding 1 to the value.  Can use cast of Unescape flag.
+                Buffer[CurrentLength++] = TempBuffer[i] + static_cast<byte>(UnescapeNext);
+                // Set unescape flag.
+                UnescapeNext = false;
+            }
         }
-        default:
-        {
-            // Regular byte.
-            Buffer[i] = Read;
-            BytesRead++;
-            break;
-        }
-        }
+
+        // Delete temp buffer.
+        delete [] TempBuffer;
     }
-    return BytesRead;
+
+    return CurrentLength;
 }
 byte Communicator::Checksum(byte *Packet, unsigned long Length)
 {
