@@ -449,9 +449,13 @@ void Communicator::TX(byte *Packet, unsigned long Length)
 }
 unsigned long Communicator::RX(byte *Buffer, unsigned long Length)
 {
+    // Use global escape_next flag to escape bytes across read segments.
+    bool UnescapeNext = false;
+    // Loop while current length is less than requested length.
     unsigned long CurrentLength = 0;
     while(CurrentLength < Length)
     {
+        // Read current available bytes.
         unsigned long RemainingLength = Length - CurrentLength;
         byte* TempBuffer = new byte[RemainingLength];
         unsigned int NRead = Serial1.readBytes(TempBuffer, RemainingLength);
@@ -461,7 +465,6 @@ unsigned long Communicator::RX(byte *Buffer, unsigned long Length)
             return 0;
         }
         // Read through temporary buffer and extract bytes into the actual buffer.
-        bool UnescapeNext = false;
         for(unsigned long i = 0; i < RemainingLength; i++)
         {
             if(TempBuffer[i] == Communicator::cEscapeByte)
