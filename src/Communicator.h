@@ -177,11 +177,11 @@ private:
     ///
     /// \brief mTXQ The internal TX queue.
     ///
-    const Outbound** mTXQ;
+    Outbound** mTXQ;
     ///
     /// \brief mRXQ The internal RX queue.
     ///
-    const Inbound** mRXQ;
+    Inbound** mRXQ;
 
     // METHODS
     ///
