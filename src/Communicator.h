@@ -24,10 +24,11 @@ public:
     // CONSTRUCTORS
     ///
     /// \brief Communicator Creates a new communicator instance.
+    /// \param SerialPort The Arduino HardwareSerial port to use for communications.
     /// \param BaudRate The baud rate (in bps) to use for serial communications.
     /// \param Config The serial configuration for data bits, parity, and stop bits. Enumeration provided by Arduino.
     ///
-    Communicator(long BaudRate, unsigned int Config = SERIAL_8N1);
+    Communicator(HardwareSerial& SerialPort, long BaudRate, unsigned int Config = SERIAL_8N1);
     ~Communicator();
 
     // METHODS
@@ -151,6 +152,11 @@ private:
     static const byte cEscapeByte = 0x1B;
 
     // ATTRIBUTES
+    ///
+    /// \brief mSerial A reference to the Arduino HardwareSerial port to use for communication.
+    ///
+    HardwareSerial* mSerial;
+
     ///
     /// \brief mQSize Stores the size of the TX/RX queues in messages.
     ///
