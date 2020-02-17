@@ -5,13 +5,13 @@
 using namespace SC;
 
 // CONSTRUCTORS
-Communicator::Communicator(HardwareSerial& SerialPort, long BaudRate, unsigned int Config)
+Communicator::Communicator(Stream& SerialPort)
 {
   // Store pointer to the serial port.
   Communicator::mSerial = &SerialPort;
 
   // Setup the serial port.
-  Communicator::mSerial->begin(BaudRate, Config);
+  // Recall that the application must call begin() outside of this class first.
   Communicator::mSerial->setTimeout(30);
 
   // Initialize parameters to default values.
