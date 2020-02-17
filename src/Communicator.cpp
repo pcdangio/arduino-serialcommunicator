@@ -5,11 +5,14 @@
 using namespace SC;
 
 // CONSTRUCTORS
-Communicator::Communicator(long BaudRate, unsigned int Config)
+Communicator::Communicator(Stream& SerialPort)
 {
+  // Store pointer to the serial port.
+  Communicator::mSerial = &SerialPort;
+
   // Setup the serial port.
-  Serial1.begin(BaudRate, Config);
-  Serial1.setTimeout(30);
+  // Recall that the application must call begin() outside of this class first.
+  Communicator::mSerial->setTimeout(30);
 
   // Initialize parameters to default values.
   Communicator::mQSize = 20;
@@ -251,11 +254,11 @@ void Communicator::SpinTX()
 void Communicator::SpinRX()
 {
     // Look for the header byte.  Read bytes until header is found, timed out, or too many bytes have been read.
-    int Read = Serial1.read();
+    int Read = Communicator::mSerial->read();
     byte NReads = 0;
     while(Read != Communicator::cHeaderByte && Read != -1 && NReads++ < 32)
     {
-        Read = Serial1.read();
+        Read = Communicator::mSerial->read();
     }
 
     if(Read != Communicator::cHeaderByte)
@@ -413,7 +416,7 @@ void Communicator::TX(Outbound* Message)
     // Use length of PTKLength - 1 because the last position in the array is for the checksum itself.
     PKTBytes[PKTLength - 1] = Communicator::Checksum(PKTBytes, PKTLength - 1);
 
-    // Send the message via Serial1.
+    // Send the message via Communicator::mSerial->
     Communicator::TX(PKTBytes, PKTLength);
 
     // Call the Sent method on the outbound message to update timestamps and counters.
@@ -426,24 +429,24 @@ void Communicator::TX(Outbound* Message)
 void Communicator::TX(byte *Packet, unsigned long Length)
 {
     // Make sure there is enough room in the output buffer.
-    while(Serial1.availableForWrite() < Length)
+    while(Communicator::mSerial->availableForWrite() < Length)
     {
         // Wait
         delayMicroseconds(10);
     }
     // Send header first.
-    Serial1.write(Packet[0]);
+    Communicator::mSerial->write(Packet[0]);
     // Write the rest of the bytes, with escapement.
     for(unsigned long i = 1; i < Length; i++)
     {
         if(Packet[i] == Communicator::cHeaderByte || Packet[i] == Communicator::cEscapeByte)
         {
-            Serial1.write(Communicator::cEscapeByte);
-            Serial1.write(Packet[i] - 1);
+            Communicator::mSerial->write(Communicator::cEscapeByte);
+            Communicator::mSerial->write(Packet[i] - 1);
         }
         else
         {
-            Serial1.write(Packet[i]);
+            Communicator::mSerial->write(Packet[i]);
         }
     }
 }
@@ -458,7 +461,7 @@ unsigned long Communicator::RX(byte *Buffer, unsigned long Length)
         // Read current available bytes.
         unsigned long RemainingLength = Length - CurrentLength;
         byte* TempBuffer = new byte[RemainingLength];
-        unsigned int NRead = Serial1.readBytes(TempBuffer, RemainingLength);
+        unsigned int NRead = Communicator::mSerial->readBytes(TempBuffer, RemainingLength);
         if(NRead < RemainingLength)
         {
             // Serial port timed out, quit.
