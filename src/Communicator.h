@@ -25,9 +25,10 @@ public:
     ///
     /// \brief Communicator Creates a new communicator instance.
     /// \param SerialPort The Arduino HardwareSerial port to use for communications.
-    /// \note Application must call begin() on serial port before using this class.
+    /// \param BaudRate The baud rate (in bps) to use for serial communications.
+    /// \param Config The serial configuration for data bits, parity, and stop bits. Enumeration provided by Arduino.
     ///
-    Communicator(Stream& SerialPort);
+    Communicator(HardwareSerial& SerialPort, long BaudRate, unsigned int Config = SERIAL_8N1);
     ~Communicator();
 
     // METHODS
@@ -127,7 +128,7 @@ public:
     ///
     void pMaxRetries(unsigned int Retries);
 
-protected:
+private:
     // ENUMS
     ///
     /// \brief Enumerates the different levels of the receipt field within a message.
@@ -152,9 +153,9 @@ protected:
 
     // ATTRIBUTES
     ///
-    /// \brief mSerial A reference to the Arduino serial port to use for communication.
+    /// \brief mSerial A reference to the Arduino HardwareSerial port to use for communication.
     ///
-    Stream* mSerial;
+    HardwareSerial* mSerial;
 
     ///
     /// \brief mQSize Stores the size of the TX/RX queues in messages.
