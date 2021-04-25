@@ -126,15 +126,23 @@ const Message* Communicator::Receive(unsigned int ID)
     }
   }
 
-  // Create a copy of the message pointer to return.
-  const Message* Output = ToRead->pMessage();
+  // Check if ToRead has been populated with a message to receive.
+  if(ToRead)
+  {
+    // Create a copy of the message pointer to return.
+    const Message* Output = ToRead->pMessage();
 
-  // Remove the inbound message from the queue.
-  delete Communicator::mRXQ[RXQLocation];
-  Communicator::mRXQ[RXQLocation] = NULL;
+    // Remove the inbound message from the queue.
+    delete Communicator::mRXQ[RXQLocation];
+    Communicator::mRXQ[RXQLocation] = NULL;
 
-  // Return the message.
-  return Output;
+    // Return the message.
+    return Output;
+  }
+  else
+  {
+    return NULL;
+  }
 }
 void Communicator::Spin()
 {
