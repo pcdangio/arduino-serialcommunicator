@@ -16,6 +16,11 @@ Message::Message(unsigned int ID, unsigned int DataLength)
   Message::mPriority = 0;
   Message::mDataLength = DataLength;
   Message::mData = new byte[DataLength];
+  // Initialize data as zeros.
+  for(unsigned int i = 0; i < DataLength; ++i)
+  {
+    Message::mData[i] = 0;
+  }
 }
 Message::Message(const byte* ByteArray, unsigned long Address)
 {
